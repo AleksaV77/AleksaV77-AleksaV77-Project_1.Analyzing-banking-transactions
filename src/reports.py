@@ -21,6 +21,11 @@ logging.basicConfig(
 
 file_excel = "C:/Users/asurk/PycharmProjects/pythonProject6/data/operations.xlsx"
 
+p = pd.DataFrame({
+                'Дата платежа': ['03.01.2018', '05.01.2018', '01.02.2018', '10.03.2018'],
+                'Категория': ['Супермаркеты', 'Еда', 'Переводы', 'Супермаркеты'],
+                'Сумма операции с округлением': [4068.2, 316.8, 5977.1, 3068.2]})
+
 def decorator_record_file(file_name):
     """Декоратор, который записывает результат выполнения функции в JSON файл."""
     def wrapper(func):
@@ -41,35 +46,42 @@ def decorator_record_file(file_name):
 def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> Dict[str, float]:
     """Функция, который считает траты по заданной категории за последние три месяца."""
 
-    list_group = []
-    res = []
+    try:
+        if not date:
+            stop_date = datetime.now()
+        else:
+            stop_date = datetime.strptime(date, "%d.%m.%Y")
 
-    if not date:
-        stop_date = datetime.now()
-    else:
-        stop_date = datetime.strptime(date, "%d.%m.%Y")
+        logger.info('Определение даты, для подсчета трат по категориям')
+        start_date = stop_date - timedelta(days=90)
 
-    logger.info('Определение даты, для подсчета трат по категориям')
-    start_date = stop_date - timedelta(days=90)
+        transactions["Дата платежа"] = pd.to_datetime(
+                        transactions["Дата платежа"], format="%d.%m.%Y")
+        df = transactions[
+            (transactions["Дата платежа"] >= start_date) &
+            (transactions["Дата платежа"] <= stop_date) &
+            (transactions["Категория"] == category)
+            ]
 
-    for i in transactions:
-        i["Дата платежа"] = pd.to_datetime(
-                    i["Дата платежа"], format="%d.%m.%Y")
-        if category == i["Категория"]:
-            list_group.append({
-                'dat': i["Дата платежа"], 'category': category, 'amount': i["Сумма операции с округлением"]})
-            df = pd.DataFrame(list_group)
-            df = df.loc[(df['dat'] >= start_date) & (df['dat'] <= stop_date)]
-            cost_analysis = df["amount"].abs().sum()
-            res = pd.DataFrame(
-                {"Категория": [category],
-                 "Сумма трат": [cost_analysis]})
+        cost_analysis = df["Сумма операции с округлением"].sum()
+        res = pd.DataFrame(
+            {"Категория": [category],
+             "Сумма трат": [cost_analysis]})
 
-            logger.info('Поиск дат и подсчет суммы')
-            logger.info(f"Создан отчет для категории '{category}': {cost_analysis}")
+        logger.info('Поиск дат и подсчет суммы')
+        logger.info(f"Создан отчет для категории '{category}': {cost_analysis}")
+
+    except ValueError as ve:
+        logger.error(f"Ошибка значения: {ve}")
+        return pd.DataFrame()
+
+    except Exception as e:
+        logger.error(f"Произошла ошибка: {e}")
+        return pd.DataFrame()
+
     return res
 
 if __name__ == "__main__":
     file = open_file(file_excel)
-    result = spending_by_category(file, "Переводы", "04.09.2021")
+    result = spending_by_category(p, "Топливо", "10.03.2018")
     print(result)

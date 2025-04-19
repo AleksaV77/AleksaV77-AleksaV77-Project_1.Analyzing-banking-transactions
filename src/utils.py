@@ -30,10 +30,25 @@ def open_file(file_name):
         return []
 
 
-def write_json(file_path: str, data: Any) -> None:
+def write_xlsx(file_path: str) -> tuple[list[dict], pd.DataFrame]:
     """ Открытие и запись json данных"""
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    try:
+        logger.info("Чтение данных из Excel-файла")
+
+        df = pd.read_excel(file_path)
+
+        logger.info("Проверка данных из файла на корректность")
+
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            logger.info("Данные корректны. Конвертация в словарь и возврат DataFrame")
+            return df.to_dict(orient="records"), df
+        else:
+            logger.warning("Данные в файле отсутствуют или не являются DataFrame")
+            return [], pd.DataFrame()
+
+    except FileNotFoundError:
+        logger.warning("Файл по переданному пути отсутствует")
+        return [], pd.DataFrame()
 
 
 def read_json(file_path: str) -> Any:
@@ -43,4 +58,5 @@ def read_json(file_path: str) -> Any:
 
 if __name__ == "__main__":
     file = open_file(file_excel)
-    print(file)
+    l = write_xlsx(file_excel)
+    print(l)
